@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dark Store Shelf Planner</title>
+<meta name="description" content="Which grocery categories get bought together, and an interactive planner that puts them in the same aisle.">
+<style>
+  :root{--deep:#004B23;--lime:#A7D129;--ink:#1D2B22;--muted:#4F5D54;--bg:#F6F4EF;--card:#FFFFFF;--line:#DDE3DD;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;}
+  header{background:var(--deep);color:#fff;border-bottom:6px solid var(--lime);padding:48px 16px 40px;}
+  .wrap{max-width:960px;margin:0 auto;padding:0 16px;}
+  header .wrap{padding:0;}
+  .eyebrow{color:var(--lime);font-weight:700;letter-spacing:.12em;font-size:13px;text-transform:uppercase;margin:0 0 12px;}
+  h1{margin:0 0 12px;font-size:clamp(30px,6vw,48px);line-height:1.1;letter-spacing:-.02em;}
+  header p.lede{margin:0 0 16px;font-size:clamp(17px,2.4vw,20px);color:#DCEFE0;max-width:640px;}
+  .tags{font-size:14px;color:#DCEFE0;margin:0;}
+  main{padding:32px 0 48px;}
+  h2{font-size:22px;margin:32px 0 12px;}
+  .tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;}
+  a.tool{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;text-decoration:none;color:inherit;box-shadow:0 2px 6px rgba(0,0,0,.05);transition:transform .15s,box-shadow .15s;}
+  a.tool:hover,a.tool:focus-visible{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.08);}
+  a.tool:focus-visible{outline:3px solid var(--deep);outline-offset:3px;}
+  .tool .icon{font-size:28px;}
+  .tool h3{margin:8px 0 6px;font-size:19px;color:var(--deep);}
+  .tool p{margin:0;color:var(--muted);}
+  .tool .go{display:inline-block;margin-top:12px;font-weight:700;color:var(--deep);}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15px;}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);}
+  th{background:#EEF3EE;}
+  tr:last-child td{border-bottom:0;}
+  td.r{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap;}
+  .table-wrap{overflow-x:auto;}
+  footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--muted);font-size:14px;}
+  footer a{color:var(--deep);}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <p class="eyebrow">BI portfolio project</p>
+    <h1>Dark Store Shelf Planner</h1>
+    <p class="lede">Which grocery categories get bought together, and an interactive planner that puts them in the same aisle.</p>
+    <p class="tags">Python · Vanilla JS · Clustering · WCAG AA</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <p>I analysed <strong>8,902 grocery order lines from 100 customers</strong> to answer a practical question: which categories get bought together, and how should a dark store lay out its aisles so pickers walk less?</p>
+
+  <h2>Explore the tools</h2>
+  <div class="tools">
+    <a class="tool" href="heatmap.html">
+      <span class="icon" aria-hidden="true">📊</span>
+      <h3>Correlation heatmap</h3>
+      <p>Pearson correlation of per-customer category spend for every category pair.</p>
+      <span class="go">Open heatmap →</span>
+    </a>
+    <a class="tool" href="planner.html">
+      <span class="icon" aria-hidden="true">🛒</span>
+      <h3>Floor planner</h3>
+      <p>Drag categories between aisles and watch the live togetherness score change.</p>
+      <span class="go">Open planner →</span>
+    </a>
+  </div>
+
+  <h2>Key findings</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">Finding</th><th scope="col">Categories</th><th scope="col">r</th></tr></thead>
+    <tbody>
+      <tr><td>Strongest link</td><td>Pasta ↔ Pasta Sauce</td><td class="r">0.96</td></tr>
+      <tr><td>Breakfast basket</td><td>Milk, Bread, Eggs</td><td class="r">0.61–0.79</td></tr>
+      <tr><td>The “parent shop”</td><td>Diapers, Wet wipes, Chocolates</td><td class="r">0.58–0.78</td></tr>
+      <tr><td>Weaker than expected</td><td>Nachos ↔ Salsa</td><td class="r">0.48</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The data-driven aisle layout scores <strong>85/100</strong> for togetherness. Move Salsa into the breakfast aisle and it drops to 75.</p>
+</main>
+
+<footer>
+  <div class="wrap">
+    Built by Ramalakshmi · <a href="https://ramalakshmi-data.github.io">Portfolio</a> · <a href="https://github.com/Ramalakshmi-data">GitHub</a><br>
+    Independent portfolio project. Not affiliated with, or endorsed by, Woolworths or any retailer.
+  </div>
+</footer>
+</body>
+</html>

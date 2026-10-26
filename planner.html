@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dark Store Floor Planner</title>
+<style>
+  :root{
+    --wgreen-deep:#004E29;   /* primary – header, signs, headings */
+    --wgreen-mid:#106B39;    /* primary tint – card heads, positive end of scale */
+    --wgreen-bright:#1C7A43;
+    --wlime:#A6D93D;         /* the one accent – rules, highlight rings (never text on light) */
+    --paper:#F6F5F0;         /* neutral surface */
+    --surface:#FFFFFF;
+    --ink:#14231A;
+    --ink-soft:#4B564E;
+    --clay:#9C4A2C;          /* negative end of diverging scale / not-found text */
+    --line:#DEE3D9;
+    --focus:#0B5FFF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45;}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+  .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  .skip{position:absolute;left:8px;top:-60px;background:#fff;color:var(--wgreen-deep);padding:8px 12px;border-radius:6px;font-weight:700;z-index:10;}
+  .skip:focus{top:8px;}
+  header.site{background:var(--wgreen-deep);color:#fff;padding:16px clamp(16px,4vw,40px);display:flex;align-items:center;gap:18px;border-bottom:6px solid var(--wlime);}
+  header.site img{height:48px;width:auto;display:block;}
+  header.site h1{margin:0;font-size:clamp(19px,3vw,27px);font-weight:800;letter-spacing:-0.02em;}
+  header.site p{margin:2px 0 0;font-size:14px;color:#DCEFE0;font-weight:500;}
+  footer.note{font-size:13px;color:var(--ink-soft);}
+  @media (max-width:640px){header.site{gap:12px;padding:12px 16px;} header.site img{height:38px;} header.site p{font-size:13px;}}
+
+  .toolbar{max-width:1280px;margin:0 auto;padding:20px clamp(16px,4vw,40px) 0;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:space-between;}
+  .search-box{flex:1 1 300px;max-width:480px;}
+  .search-box label{display:block;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--wgreen-deep);margin-bottom:6px;}
+  .search-box input{width:100%;padding:11px 14px;border:2px solid #8A968D;border-radius:8px;font-size:16px;background:var(--surface);color:var(--ink);}
+  .search-box input:focus{border-color:var(--wgreen-bright);}
+  .search-result{margin-top:8px;font-size:14px;color:var(--ink-soft);min-height:20px;}
+  .search-result strong{color:var(--wgreen-deep);}
+  .search-result.not-found{color:var(--clay);}
+  .score-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 22px 14px;text-align:center;min-width:220px;flex:0 0 auto;}
+  .score-card .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-weight:700;}
+  .score-card .value{font-size:40px;font-weight:800;color:var(--wgreen-deep);line-height:1.1;margin-top:2px;font-variant-numeric:tabular-nums;}
+  .score-card .value small{font-size:19px;color:var(--ink-soft);font-weight:600;}
+  .score-bar{height:8px;background:var(--line);border-radius:999px;margin-top:8px;overflow:hidden;}
+  .score-fill{height:100%;background:var(--wgreen-bright);border-radius:999px;transition:width .35s ease;}
+  .score-card .sub{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+  main{max-width:1280px;margin:0 auto;padding:16px clamp(16px,4vw,40px) 64px;}
+  .intro{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin:4px 0 26px;}
+  .intro p{font-size:14px;color:var(--ink-soft);margin:0;max-width:78ch;}
+  button.ghost{background:transparent;border:2px solid var(--wgreen-mid);color:var(--wgreen-deep);font-weight:700;font-size:14px;padding:8px 14px;border-radius:8px;cursor:pointer;}
+  button.ghost:hover{background:#E8F1EA;}
+  #aisles{display:flex;flex-direction:column;gap:30px;}
+  .aisle{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 18px 20px;box-shadow:0 10px 22px -18px rgba(0,0,0,.5);}
+  .aisle.drag-over,.empty-lane.drag-over{border-color:var(--wgreen-bright);box-shadow:0 0 0 3px rgba(28,122,67,.3);}
+  .aisle-sign{position:absolute;top:-15px;left:18px;background:var(--wgreen-deep);color:#fff;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:6px 14px;border-radius:6px;margin:0;}
+  .aisle-cards{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+  .empty-lane{border:2px dashed #8A968D;border-radius:14px;padding:24px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .empty-lane.drag-over{background:#EEF5EF;color:var(--wgreen-deep);}
+  .cat-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;width:240px;flex:0 0 auto;cursor:grab;transition:transform .15s,box-shadow .15s;}
+  .cat-card.dragging{opacity:.4;}
+  .cat-card.highlight{box-shadow:0 0 0 3px var(--wlime),0 0 0 5px var(--wgreen-deep);transform:translateY(-2px);}
+  .card-head{background:var(--wgreen-mid);color:#fff;border-radius:10px 10px 0 0;padding:8px 10px 8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .card-head h3{margin:0;font-size:15px;font-weight:700;}
+  .card-head .stat{font-size:11.5px;color:#DCEFE0;}
+  .handle{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:6px;width:34px;height:34px;font-size:18px;line-height:1;cursor:grab;touch-action:none;flex:0 0 auto;}
+  .card-body{padding:10px 12px 12px;}
+  ul.products{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+  ul.products li{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;}
+  ul.products li.hit{background:var(--wlime);border-color:var(--wgreen-deep);color:var(--wgreen-deep);font-weight:700;}
+  .move-control{margin-top:10px;}
+  .move-control label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);display:block;margin-bottom:3px;font-weight:700;}
+  .move-control select{width:100%;font-size:14px;padding:6px;border-radius:6px;border:1px solid #8A968D;background:#fff;color:var(--ink);}
+  .ghost-card{position:fixed;pointer-events:none;z-index:50;opacity:.85;transform:rotate(2deg);box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  footer.note{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 48px;}
+  @media (max-width:640px){
+    .cat-card{width:100%;}
+    .score-card{width:100%;position:sticky;top:0;z-index:20;padding:8px 14px;box-shadow:0 6px 14px -10px rgba(0,0,0,.4);}
+    .score-card .value{font-size:30px;}
+    .search-box{max-width:none;}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#aisles">Skip to aisles</a>
+<header class="site">
+  <div>
+    <h1>Dark Store Floor Planner</h1>
+    <p>Put what customers buy together in the same aisle</p>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="search-box" role="search">
+    <label for="productSearch">Find a product</label>
+    <input type="search" id="productSearch" placeholder="e.g. Barilla Spaghetti" autocomplete="off" aria-describedby="searchResult">
+    <div class="search-result" id="searchResult" aria-live="polite"></div>
+  </div>
+  <div class="score-card">
+    <div class="label" id="scoreLabel">Togetherness score</div>
+    <div class="value" aria-labelledby="scoreLabel"><span id="scoreValue">–</span><small> / 100</small></div>
+    <div class="score-bar" role="progressbar" aria-labelledby="scoreLabel" aria-valuemin="0" aria-valuemax="100" id="scoreBar"><div class="score-fill" id="scoreFill" style="width:0%"></div></div>
+    <div class="sub" id="scoreSub"></div>
+  </div>
+</div>
+
+<main>
+  <div class="intro">
+    <p>Each card is a category, with all of its products stacked inside. Drag a card by its <span aria-hidden="true">⠿</span> handle (or anywhere on desktop) into another aisle, or onto the dashed lane to open a new one. Empty aisles disappear. On keyboard or touch, every card also has a <strong>Move to</strong> menu.</p>
+    <button type="button" class="ghost" id="resetBtn">Reset to seeded layout</button>
+  </div>
+  <div id="aisles"></div>
+  <p class="visually-hidden" id="announcer" aria-live="assertive"></p>
+</main>
+
+<footer class="note" id="footnote"></footer>
+
+<script>
+const DATA = {"categories":[{"code":"A.Milk","label":"Milk"},{"code":"B.Bread","label":"Bread"},{"code":"C.Eggs","label":"Eggs"},{"code":"D.Pasta","label":"Pasta"},{"code":"E.Pasta Sauce","label":"Pasta Sauce"},{"code":"F.Nachos","label":"Nachos"},{"code":"G.Salsa","label":"Salsa"},{"code":"H.Diapers","label":"Diapers"},{"code":"I.Wet wipes","label":"Wet wipes"},{"code":"J.Chocolates","label":"Chocolates"}],"custSpend":[[27.3,17.2,16.2,54.0,37.8,33.6,18.0,105.0,309.0,59.7],[116.7,219.2,90.6,79.5,65.7,14.4,16.0,21.0,32.5,81.3],[20.7,30.5,20.4,37.5,37.3,86.4,33.5,105.0,136.0,99.5],[73.1,30.5,57.0,75.0,51.1,19.2,52.0,63.0,44.5,41.2],[189.8,140.0,221.2,96.0,85.9,4.8,26.0,63.0,63.0,48.1],[438.0,191.8,574.4,3.0,4.0,28.8,62.0,567.0,223.0,37.4],[253.9,146.3,148.2,18.5,11.1,24.0,20.5,2688.0,617.5,293.2],[272.4,676.8,120.6,90.5,62.0,19.2,8.5,546.0,234.5,721.2],[86.0,69.6,85.8,23.0,19.7,192.0,106.5,630.0,291.5,53.5],[465.8,233.9,176.4,104.5,38.5,355.2,116.5,336.0,255.5,24.0],[137.4,68.0,121.0,55.0,39.9,52.8,87.0,84.0,66.0,14.4],[108.9,104.9,92.8,115.0,101.5,52.8,28.0,63.0,76.5,22.0],[166.1,65.0,92.8,24.0,14.8,9.6,17.0,21.0,87.0,20.6],[162.3,68.0,136.0,17.0,9.0,76.8,145.0,147.0,215.5,50.4],[249.5,282.3,176.4,85.0,58.6,28.8,22.5,420.0,370.5,239.1],[5.6,9.4,0.0,314.0,307.0,158.4,26.5,105.0,158.0,52.9],[54.6,21.9,32.0,36.0,21.5,86.4,45.5,294.0,135.0,16.5],[143.0,115.7,90.2,58.5,35.7,4.8,0.0,126.0,241.0,64.2],[70.4,171.4,47.0,74.0,60.6,110.4,49.0,63.0,54.0,91.2],[78.7,101.7,42.0,62.0,44.5,28.8,21.5,147.0,68.5,111.1],[41.4,43.8,87.4,15.0,16.5,24.0,29.0,315.0,296.5,79.2],[11.7,14.1,10.8,23.0,18.0,28.8,25.5,336.0,77.0,64.8],[78.7,74.3,35.8,53.0,29.1,28.8,17.5,21.0,28.5,16.8],[261.9,329.6,274.2,25.0,18.0,19.2,20.5,462.0,305.0,220.6],[169.1,151.1,627.4,28.0,49.9,4.8,52.0,504.0,113.5,96.4],[55.8,71.9,62.4,44.5,40.2,76.8,65.5,462.0,88.5,52.8],[142.3,82.2,194.2,38.5,35.7,24.0,93.0,273.0,149.5,70.3],[55.3,38.3,52.0,97.0,99.4,72.0,86.5,63.0,145.5,37.8],[15.6,18.0,10.0,137.0,117.2,33.6,54.0,42.0,76.5,120.4],[135.5,123.7,133.6,302.5,223.7,24.0,40.0,252.0,174.5,99.5],[89.4,148.7,149.6,58.0,70.8,0.0,4.5,84.0,87.0,93.3],[78.0,40.6,78.6,126.0,87.7,67.2,125.5,189.0,116.0,31.6],[214.4,210.4,199.6,30.5,25.4,9.6,8.5,1029.0,384.0,173.6],[105.5,230.9,114.0,24.0,24.9,14.4,20.5,21.0,76.5,157.8],[32.9,40.7,21.2,88.0,79.3,72.0,30.0,84.0,118.0,52.8],[285.3,115.8,155.4,12.5,4.5,24.0,28.0,126.0,537.5,113.3],[385.7,401.5,171.8,48.5,26.5,28.8,16.0,105.0,70.0,48.0],[182.9,191.6,211.8,42.0,42.1,33.6,24.5,462.0,704.0,192.1],[139.6,176.9,224.8,23.5,23.7,33.6,38.5,105.0,51.5,24.0],[225.8,118.9,396.6,99.5,131.1,9.6,29.0,294.0,357.5,60.8],[31.2,18.0,25.0,110.0,80.2,9.6,13.5,126.0,374.0,141.7],[36.8,85.3,25.8,74.5,70.2,48.0,17.5,42.0,54.0,57.0],[15.6,23.5,15.0,31.0,25.9,24.0,21.5,21.0,15.0,20.6],[26.3,47.0,16.2,72.0,44.7,187.2,40.0,1029.0,804.5,425.7],[32.4,72.8,5.4,62.5,26.0,240.0,20.0,1701.0,1355.0,1512.6],[108.2,82.1,77.4,19.5,14.8,33.6,22.0,252.0,305.5,100.9],[72.1,96.3,42.8,40.5,26.0,33.6,16.0,210.0,159.0,135.5],[21.2,34.4,15.0,28.0,23.1,24.0,8.5,252.0,217.5,170.9],[141.8,82.1,140.6,23.0,15.4,19.2,20.5,63.0,60.5,12.0],[45.8,79.7,36.2,63.5,55.2,19.2,8.5,42.0,67.5,55.2],[431.8,545.1,817.2,58.5,91.5,0.0,4.0,126.0,98.5,56.0],[31.2,52.3,20.4,23.0,21.7,9.6,4.0,0.0,15.0,12.0],[13.4,82.2,10.0,25.5,30.2,129.6,20.0,105.0,95.5,260.8],[21.2,12.5,10.0,291.0,192.8,124.8,114.0,126.0,124.5,52.8],[92.8,90.0,122.0,178.0,143.3,67.2,103.5,357.0,108.0,48.0],[261.6,369.4,165.6,111.0,93.5,24.0,18.0,105.0,127.0,135.8],[56.3,83.8,36.6,18.0,13.5,14.4,12.0,105.0,38.0,66.2],[97.7,53.2,72.8,45.0,33.4,33.6,40.5,231.0,107.5,31.2],[60.9,65.8,78.2,119.5,104.3,43.2,65.0,147.0,88.5,46.3],[121.1,57.1,126.0,21.0,17.0,14.4,18.0,483.0,328.5,62.1],[47.5,60.2,32.0,13.0,9.0,52.8,13.5,210.0,291.0,98.1],[57.5,94.7,20.0,71.0,34.1,105.6,33.5,483.0,609.0,705.6],[121.1,75.1,40.4,24.5,14.8,14.4,8.5,105.0,279.0,140.3],[19.0,31.3,10.8,29.0,15.7,4.8,0.0,210.0,103.0,182.1],[64.1,75.1,62.4,145.5,154.9,105.6,80.0,21.0,115.5,41.2],[54.1,60.2,32.0,89.5,74.5,57.6,28.0,42.0,53.0,24.7],[13.4,75.9,15.0,110.5,155.4,19.2,4.0,84.0,74.5,134.5],[61.4,32.1,37.8,7.5,4.0,43.2,12.0,252.0,363.0,30.2],[136.4,64.9,89.0,33.0,23.4,9.6,20.5,147.0,212.5,91.2],[280.7,282.6,111.6,70.0,34.0,81.6,78.0,63.0,105.5,126.6],[58.5,82.9,30.4,31.5,22.5,412.8,95.5,273.0,317.0,134.5],[477.1,461.6,345.6,168.0,141.8,28.8,24.0,336.0,202.5,84.4],[50.2,37.5,98.2,73.5,78.8,96.0,201.5,63.0,54.0,10.3],[86.5,36.7,82.8,44.0,29.1,67.2,128.5,147.0,69.5,15.1],[66.5,86.9,78.2,189.5,211.2,33.6,52.0,21.0,19.5,16.5],[77.0,117.4,66.6,22.0,18.0,48.0,30.5,168.0,431.0,312.6],[108.4,372.4,148.6,18.0,24.7,0.0,0.0,84.0,121.0,200.9],[99.9,101.7,107.4,41.0,33.4,24.0,38.0,147.0,187.0,153.7],[133.8,75.2,146.8,7.5,3.7,14.4,29.5,210.0,103.0,41.2],[60.9,22.7,58.2,25.0,24.1,28.8,66.0,126.0,122.0,24.0],[208.1,212.7,114.8,27.5,17.2,81.6,26.0,21.0,42.5,14.4],[483.7,1106.3,452.6,278.0,206.7,33.6,20.5,63.0,81.0,76.9],[40.2,137.0,63.2,49.5,59.1,24.0,13.5,168.0,49.0,84.4],[128.4,133.7,114.0,191.0,153.2,19.2,13.0,294.0,297.0,133.2],[224.2,320.5,208.4,27.5,22.0,0.0,0.0,21.0,117.5,96.8],[29.0,81.3,30.8,41.5,43.5,38.4,8.5,210.0,155.0,107.7],[108.7,90.6,88.6,405.0,462.0,9.6,12.5,42.0,70.0,46.0],[73.6,85.3,83.6,25.5,24.6,115.2,47.0,210.0,238.0,44.6],[137.9,148.5,60.8,83.0,49.4,62.4,47.5,42.0,29.5,32.3],[224.4,342.0,156.0,129.0,97.3,163.2,58.0,588.0,271.5,120.8],[144.2,99.3,70.4,114.5,74.6,52.8,32.0,168.0,144.5,48.8],[50.2,37.5,42.8,18.0,11.1,24.0,33.5,735.0,906.0,579.7],[58.0,38.3,30.0,71.0,60.7,48.0,20.5,42.0,110.0,21.3],[76.5,46.1,26.6,90.0,57.4,81.6,34.0,0.0,99.0,24.0],[636.3,507.4,485.0,26.5,15.1,4.8,21.5,105.0,29.5,41.5],[79.4,129.8,64.4,243.5,201.7,436.8,150.5,168.0,71.5,24.0],[123.8,125.1,144.0,104.0,81.0,33.6,63.5,105.0,223.5,130.7],[456.9,233.2,488.4,90.0,74.8,48.0,167.5,42.0,42.0,14.4],[59.7,76.7,63.6,78.0,71.7,43.2,16.0,21.0,96.0,19.2],[71.4,37.6,77.8,213.0,168.3,67.2,187.0,42.0,132.5,35.0]],"products":{"A.Milk":["A2 Full Cream Milk 2L","Dairy Farmers Lite Milk 2L","Pauls Full Cream Milk 2L"],"B.Bread":["Abbott's Village Bakery Farmhouse Wholemeal 800g","Helga's Wholemeal 750g","Wonder White Sandwich 700g"],"C.Eggs":["Pace Farm Free Range Eggs 12 pack 600g","Woolworths Free Range Eggs 12 pack 700g"],"D.Pasta":["Barilla Spaghetti 500g","Latina Fresh Beef Ravioli 625g","San Remo Penne 500g"],"E.Pasta Sauce":["Barilla Basilico Pasta Sauce 400g","Dolmio Pasta Sauce Classic Tomato 500g","Leggo's Bolognese Pasta Sauce 500g"],"F.Nachos":["CC's Corn Chips Tasty Cheese 175g","Doritos Corn Chips Cheese Supreme 170g"],"G.Salsa":["Old El Paso Thick N Chunky Salsa Mild 300g","Tostitos Salsa Medium 300g"],"H.Diapers":["BabyLove Cosifit Nappies Size 3 54 pack","Huggies Ultra Dry Nappy Pants Size 4 29 pack"],"I.Wet wipes":["Curash Baby Wipes 80 pack","Huggies Baby Wipes Fragrance Free 80 pack"],"J.Chocolates":["Cadbury Dairy Milk Chocolate Block 180g","Lindt Excellence 70% Cocoa Dark Chocolate 100g","Maltesers Box 400g"]},"catStats":{"A.Milk":{"spend":13035.0,"qty":2950},"B.Bread":{"spend":13655.7,"qty":3083},"C.Eggs":{"spend":11890.0,"qty":2288},"D.Pasta":{"spend":7672.5,"qty":1830},"E.Pasta Sauce":{"spend":6451.1,"qty":1588},"F.Nachos":{"spend":5750.4,"qty":1198},"G.Salsa":{"spend":4213.0,"qty":992},"H.Diapers":{"spend":23625.0,"qty":1125},"I.Wet wipes":{"spend":19217.5,"qty":4045},"J.Chocolates":{"spend":11614.1,"qty":1621}},"meta":{"lines":8902,"orders":1995,"customers":100}};
+const cats = DATA.categories, n = cats.length;
+const idx = {}; cats.forEach((c,i)=>idx[c.code]=i);
+const label = code => cats[idx[code]].label;
+
+// ---------- 1. Pearson correlation of per-customer category spend ----------
+function pearsonMatrix(rows){
+  const m=rows.length,k=rows[0].length,mean=Array(k).fill(0);
+  rows.forEach(r=>r.forEach((v,j)=>mean[j]+=v/m));
+  const C=Array.from({length:k},()=>Array(k).fill(0));
+  for(let a=0;a<k;a++)for(let b=a;b<k;b++){
+    let sab=0,saa=0,sbb=0;
+    for(const r of rows){const x=r[a]-mean[a],y=r[b]-mean[b];sab+=x*y;saa+=x*x;sbb+=y*y;}
+    C[a][b]=C[b][a]=(saa&&sbb)?sab/Math.sqrt(saa*sbb):0;
+  }
+  return C;
+}
+const corr = pearsonMatrix(DATA.custSpend);
+const r = (a,b) => corr[idx[a]][idx[b]];
+
+// ---------- 2. Seed aisles: average-linkage agglomerative clustering ----------
+// Start with every category alone; repeatedly merge the two clusters whose
+// average pairwise correlation is highest, while that average is >= THRESHOLD.
+const THRESHOLD = 0.4;
+function seedAisles(){
+  let clusters = cats.map(c=>[c.code]);
+  while(true){
+    let best=null;
+    for(let a=0;a<clusters.length;a++)for(let b=a+1;b<clusters.length;b++){
+      let s=0,k=0; for(const x of clusters[a])for(const y of clusters[b]){s+=r(x,y);k++;}
+      const avg=s/k; if(!best||avg>best.avg) best={a,b,avg};
+    }
+    if(!best||best.avg<THRESHOLD) break;
+    clusters[best.a]=clusters[best.a].concat(clusters[best.b]); clusters.splice(best.b,1);
+  }
+  clusters.forEach(c=>c.sort((x,y)=>idx[x]-idx[y]));      // business order inside an aisle
+  clusters.sort((x,y)=>idx[x[0]]-idx[y[0]]);               // aisles in business order
+  return clusters;
+}
+const SEED = seedAisles();
+let aisles = SEED.map(a=>a.slice());
+
+// ---------- 3. Togetherness score ----------
+// mean r over every pair of categories that share an aisle, rescaled from [-1,1] to [0,100].
+function togetherness(){
+  let s=0,k=0;
+  aisles.forEach(a=>{for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++){s+=r(a[i],a[j]);k++;}});
+  return k ? {score:Math.round((s/k+1)/2*100), pairs:k} : null;
+}
+function renderScore(){
+  const t=togetherness(), v=document.getElementById('scoreValue'), f=document.getElementById('scoreFill'),
+        bar=document.getElementById('scoreBar'), sub=document.getElementById('scoreSub');
+  if(!t){v.textContent='–';f.style.width='0%';bar.removeAttribute('aria-valuenow');bar.setAttribute('aria-valuetext','No aisle shares categories yet');sub.textContent='No aisle holds two or more categories';return null;}
+  v.textContent=t.score; f.style.width=t.score+'%'; bar.setAttribute('aria-valuenow',t.score); bar.removeAttribute('aria-valuetext');
+  sub.textContent='Averaged over '+t.pairs+' same-aisle pair'+(t.pairs===1?'':'s');
+  return t.score;
+}
+
+// ---------- 4. Moving categories ----------
+const announcer=document.getElementById('announcer');
+function moveCategory(code, target /* aisle index or 'new' */, keepFocus){
+  const from = aisles.findIndex(a=>a.includes(code));
+  if(target===from) return;
+  const destRef = target==='new' ? null : aisles[target];
+  aisles[from].splice(aisles[from].indexOf(code),1);
+  if(destRef) destRef.push(code); else aisles.push([code]);
+  aisles = aisles.filter(a=>a.length);
+  render();
+  const now = aisles.findIndex(a=>a.includes(code));
+  const t = togetherness();
+  announcer.textContent = label(code)+' moved to aisle '+(now+1)+'. Togetherness score '+(t?t.score:'not available')+'.';
+  if(keepFocus){ const sel=document.getElementById('move-'+safe(code)); if(sel) sel.focus(); }
+}
+const safe = code => code.replace(/[^a-zA-Z0-9]/g,'');
+const money = v => v.toLocaleString('en-AU',{style:'currency',currency:'AUD',maximumFractionDigits:0});
+
+function buildCard(code, aisleIdx){
+  const card=document.createElement('article');
+  card.className='cat-card'; card.draggable=true; card.id='card-'+safe(code); card.dataset.code=code;
+  card.setAttribute('aria-labelledby','h-'+safe(code));
+  const st=DATA.catStats[code], prods=DATA.products[code];
+  card.innerHTML =
+    '<div class="card-head"><div><h3 id="h-'+safe(code)+'"></h3><div class="stat"></div></div>'+
+    '<button type="button" class="handle" aria-hidden="true" tabindex="-1" title="Drag">⠿</button></div>'+
+    '<div class="card-body"><ul class="products"></ul><div class="move-control">'+
+    '<label for="move-'+safe(code)+'"></label><select id="move-'+safe(code)+'"></select></div></div>';
+  card.querySelector('h3').textContent=label(code);
+  card.querySelector('.stat').textContent=prods.length+' products · '+money(st.spend)+' spend';
+  const ul=card.querySelector('ul');
+  prods.forEach(p=>{const li=document.createElement('li');li.textContent=p;li.dataset.product=p;ul.appendChild(li);});
+  card.querySelector('label').innerHTML='Move to <span class="visually-hidden"> – '+label(code)+'</span>';
+  const sel=card.querySelector('select');
+  sel.add(new Option('Aisle '+(aisleIdx+1)+' (current)','current',true,true));
+  aisles.forEach((a,i)=>{ if(i!==aisleIdx) sel.add(new Option('Aisle '+(i+1)+': '+a.map(label).join(', '),String(i))); });
+  if(aisles[aisleIdx].length>1) sel.add(new Option('New aisle','new'));
+  sel.addEventListener('change',()=>{ if(sel.value==='current') return; moveCategory(code, sel.value==='new'?'new':+sel.value, true); });
+
+  card.addEventListener('dragstart',e=>{card.classList.add('dragging');e.dataTransfer.setData('text/plain',code);e.dataTransfer.effectAllowed='move';});
+  card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  attachTouchDrag(card.querySelector('.handle'), card, code);
+  return card;
+}
+
+function dropZone(el, target){
+  el.dataset.target=target;
+  el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';el.classList.add('drag-over');});
+  el.addEventListener('dragleave',e=>{ if(!el.contains(e.relatedTarget)) el.classList.remove('drag-over'); });
+  el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('drag-over');const code=e.dataTransfer.getData('text/plain');if(code)moveCategory(code,target==='new'?'new':+target);});
+}
+
+// Touch / pen fallback (HTML5 drag-and-drop is unreliable on phones)
+function attachTouchDrag(handle, card, code){
+  handle.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse') return;            // mouse uses native DnD
+    e.preventDefault(); handle.setPointerCapture(e.pointerId);
+    const rect=card.getBoundingClientRect(), ghost=card.cloneNode(true);
+    ghost.classList.add('ghost-card'); ghost.removeAttribute('id'); ghost.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
+    ghost.style.width=rect.width+'px'; document.body.appendChild(ghost); card.classList.add('dragging');
+    const dx=e.clientX-rect.left, dy=e.clientY-rect.top; let over=null;
+    const place=ev=>{ghost.style.left=(ev.clientX-dx)+'px';ghost.style.top=(ev.clientY-dy)+'px';};
+    place(e);
+    const move=ev=>{ place(ev);
+      const zone=document.elementFromPoint(ev.clientX,ev.clientY)?.closest('[data-target]');
+      if(zone!==over){ over&&over.classList.remove('drag-over'); over=zone; over&&over.classList.add('drag-over'); }
+      if(ev.clientY<60) scrollBy(0,-12); else if(ev.clientY>innerHeight-60) scrollBy(0,12);
+    };
+    const end=()=>{ handle.removeEventListener('pointermove',move); ghost.remove(); card.classList.remove('dragging');
+      if(over){ over.classList.remove('drag-over'); const t=over.dataset.target; moveCategory(code,t==='new'?'new':+t); } };
+    handle.addEventListener('pointermove',move);
+    handle.addEventListener('pointerup',end,{once:true});
+    handle.addEventListener('pointercancel',end,{once:true});
+  });
+}
+
+function render(){
+  const box=document.getElementById('aisles'); box.innerHTML='';
+  aisles.forEach((a,i)=>{
+    const sec=document.createElement('section'); sec.className='aisle'; sec.setAttribute('aria-labelledby','aisle-h-'+i);
+    sec.innerHTML='<h2 class="aisle-sign" id="aisle-h-'+i+'">Aisle '+(i+1)+'</h2><div class="aisle-cards"></div>';
+    const wrap=sec.querySelector('.aisle-cards'); a.forEach(code=>wrap.appendChild(buildCard(code,i)));
+    dropZone(sec,String(i)); box.appendChild(sec);
+  });
+  const lane=document.createElement('div'); lane.className='empty-lane';
+  lane.textContent='Drop a category card here to open a new aisle';
+  dropZone(lane,'new'); box.appendChild(lane);
+  renderScore(); runSearch(false);
+}
+
+// ---------- 5. Product search ----------
+const input=document.getElementById('productSearch'), out=document.getElementById('searchResult');
+function runSearch(scroll){
+  document.querySelectorAll('li.hit').forEach(e=>e.classList.remove('hit'));
+  document.querySelectorAll('.cat-card.highlight').forEach(e=>e.classList.remove('highlight'));
+  out.classList.remove('not-found'); out.textContent='';
+  const q=input.value.trim().toLowerCase(); if(!q) return;
+  const hits=[];
+  aisles.forEach((a,ai)=>a.forEach(code=>DATA.products[code].forEach(p=>{ if(p.toLowerCase().includes(q)) hits.push({p,code,ai}); })));
+  if(!hits.length){ out.classList.add('not-found'); out.textContent='No product matches “'+input.value.trim()+'”'; return; }
+  hits.forEach(h=>{
+    const card=document.getElementById('card-'+safe(h.code)); card.classList.add('highlight');
+    [...card.querySelectorAll('li')].find(li=>li.dataset.product===h.p).classList.add('hit');
+  });
+  const first=hits[0];
+  const s=document.createElement('strong'); s.textContent=first.p;
+  out.append(s,' is in Aisle '+(first.ai+1)+' · '+label(first.code));
+  if(hits.length>1){
+    const others=[...new Set(hits.slice(1).map(h=>'Aisle '+(h.ai+1)))].join(', ');
+    out.append(' (+'+(hits.length-1)+' more match'+(hits.length>2?'es':'')+' in '+others+')');
+  }
+  if(scroll) document.getElementById('card-'+safe(first.code)).scrollIntoView({behavior:'smooth',block:'center'});
+}
+let t; input.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>runSearch(true),150);});
+input.addEventListener('keydown',e=>{ if(e.key==='Escape'){input.value='';runSearch(false);} if(e.key==='Enter') runSearch(true); });
+
+document.getElementById('resetBtn').addEventListener('click',()=>{aisles=SEED.map(a=>a.slice());render();announcer.textContent='Layout reset to the seeded aisles. Togetherness score '+togetherness().score+'.';});
+
+document.getElementById('footnote').textContent =
+  'Aisles seeded by average-linkage clustering of the category correlation matrix (merge while the average pairwise r ≥ '+THRESHOLD+'), computed in your browser from '+
+  DATA.meta.lines.toLocaleString('en-AU')+' order lines across '+DATA.meta.customers+' customers. Score = mean correlation of every same-aisle category pair, mapped from −1…+1 to 0…100.';
+render();
+</script>
+
+<p class="note" style="text-align:center;margin:24px auto 32px;max-width:720px;padding:0 16px;"><a href="index.html">Project home</a> · <a href="heatmap.html">Correlation heatmap</a><br>Independent portfolio project by Ramalakshmi. Not affiliated with, or endorsed by, Woolworths or any retailer. Product names are used for illustration only.</p>
+</body>
+</html>
